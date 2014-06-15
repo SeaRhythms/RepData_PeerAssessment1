@@ -1,20 +1,89 @@
 # Reproducible Research: Peer Assessment 1
-
+==========================================
 
 ## Loading and preprocessing the data
-
-
+```{r echo=TRUE}
+## Load and preprocess the data 
+myData =read.csv("activity.csv",header=T, stringsAsFactors=F)
+# convert the date
+myData$date <- as.Date(myData$date,"%Y-%m-%d")
+```
 
 ## What is mean total number of steps taken per day?
-
-
+```{r echo=TRUE}
+# Aggregate by date
+dailyTotals <- aggregate(steps ~ date, myData, sum)
+# Histogram 
+hist(dailyTotals$steps, main="Total number of steps taken each day", 
+     xlab="Number of steps")
+# Mean & median 
+meanSteps <- mean(dailyTotals$steps)
+medianSteps <- median(dailyTotals$steps)
+```
+- Mean = `r meanSteps`
+- Median = `r medianSteps`
 
 ## What is the average daily activity pattern?
-
-
+```{r echo=TRUE}
+# Aggregate by interval 
+intervalMeans <- aggregate(steps ~ interval, myData, mean)
+# Time series plot
+plot(intervalMeans$interval, intervalMeans$steps, type="l",
+     xlab="5-minute interval", ylab="Average number steps")
+# Interval with max steps 
+indx <- which.max(intervalMeans$steps)
+maxInterval <- intervalMeans[indx,]$interval
+maxSteps <- intervalMeans[indx,]$steps
+```
+- Maximum interval `r maxInterval` with `r maxSteps` steps 
 
 ## Imputing missing values
-
+```{r echo=TRUE}
+# Total missing values
+totalMissing <- sum(is.na(myData$steps))
+```
+- Total missing values `r totalMissing`
+```{r}
+#  Fill in missing values
+missing <- which(is.na(myData$steps))
+means <- sapply(myData[missing,"interval"], function(x) {
+        intervalMeans[ intervalMeans$interval==x, "steps"]
+        })        
+myData[missing, "steps"] <- means
+# Histrogram
+dailyTotals <- aggregate(steps ~ date, myData, sum)
+hist(dailyTotals$steps, main="Total number of steps taken each day - Imputed NA's", 
+     xlab="Number of steps")
+# Mean & median 
+naMeanSteps <- mean(dailyTotals$steps)
+naMedianSteps <- median(dailyTotals$steps)
+```
+- Mean = `r naMeanSteps`
+- Median = `r naMedianSteps`  
+These values do not differ much from the dataset with missing values included 
+so they have very little effect.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r echo=TRUE}
+# Weekday or weekend factor 
+myData$week <- weekdays(myData$date)
+myData$week <- sapply(myData$week, function(x) {
+        if (x=="Sunday"|x=="Saturday"){
+                "weekend"
+        } else {
+                "weekday"
+        }
+        })
+myData$week <- factor(myData$week)
+# Aggregate by interval for each: weekday & weekend
+intervalMeans = aggregate(steps ~ interval + week, myData, mean)
+# Time series plot
+library(lattice)
+xyplot(steps ~ interval | week, intervalMeans, type = "l", 
+       layout = c(1, 2), 
+       xlab = "5-minute Interval", 
+       ylab = "Averag number of steps taken")
+
+```
+
